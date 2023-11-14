@@ -11,11 +11,8 @@ from plotly.subplots import make_subplots
 import datetime
 import matplotlib.pyplot as plt
 import locale
-import os
-CONDA_PREFIX = r"C:\Users\hcord\anaconda3\envs\geo"
-os.environ['GDAL_DATA'] = os.environ['CONDA_PREFIX'] + r'\Library\share\gdal'
 
-locale.setlocale( locale.LC_ALL, 'pt_BR.UTF-8' )
+locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8' )
 
 st.set_page_config(layout="wide")
 
