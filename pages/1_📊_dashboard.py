@@ -35,26 +35,23 @@ cont_txs = st.container()
 # Agrupamento por Cartórios de Valor de Transação e Contagem
 cont_cart = st.container()
 col_cart_display, col_cart_sel = st.columns(
-    [9,1]
+    [8.5,1.5]
 )
 
 # Distribuições Tx ou Valor por Uso ou Natureza
 cont_dist = st.container()
-col_dist_sel, col_dist, = st.columns(
+col_dist_sel, col_dist = st.columns(
     [1,9]
 )
 
 # Área do Terreno x Área Construída x Proporção
 cont_area = st.container()
-col_area_sel, col_area, = st.columns(
+col_area_sel, col_area = st.columns(
     [1,9]
 )
 
 # Financiamento
 cont_fin = st.container()
-col_fin_sel, col_fin, = st.columns(
-    [1,9]
-)
 
 # Impostos
 cont_tax = st.container()
@@ -148,6 +145,26 @@ with col_cart_sel:
     #    on_change=reorder_cart
     )
 
+# Visão de Financiamento
+financ_df = itbi_df[["Valor Financiado","Tipo de Financiamento","Valor de Transação"]].copy()
+financ_df['Tipo de Financiamento'] = financ_df['Tipo de Financiamento'].fillna("0.Não declarado")
+# Proporção de Financiados
+prop_financeiados = 100*(1 - (financ_df['Tipo de Financiamento'].value_counts()['0.Não declarado'] / financ_df['Tipo de Financiamento'].value_counts().sum()))
+cont_fin.write (f"Proporção de financiados: {prop_financeiados:.2f}%")
+financ_df = financ_df.loc[financ_df['Tipo de Financiamento'] != "0.Não declarado"]
+financ_df = financ_df.groupby(["Tipo de Financiamento"]).agg(["sum"]).reset_index()
+df_fin = financ_df[[('Tipo de Financiamento',     ''),
+                    (     'Valor Financiado',  'sum'),
+                    (   'Valor de Transação',  'sum')]].set_axis(['tipo', 'total_financiado', 'total_transacionado'], axis=1)
+
+df_fin = pd.melt(
+    df_fin, 
+    id_vars=["tipo"],
+    value_vars=['total_financiado','total_transacionado'])
+df_fin['formatted_value'] = df_fin['value'].map(lambda val: locale.currency(val, grouping=True, symbol='R$'))
+fig_fin = px.bar(df_fin, x='tipo', y='value',
+             color='variable',barmode='group')
+cont_fin.plotly_chart(fig_fin,use_container_width= True)
 
 #if st.session_state['first_display'] == True:
 adjust_options()
