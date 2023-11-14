@@ -1,7 +1,7 @@
 streamlit
 matplotlib
 plotly
-plotly_express==0.4.1
+plotly_express
 locale
 geopandas
 streamlit-folium
