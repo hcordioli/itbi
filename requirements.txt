@@ -3,3 +3,5 @@ matplotlib
 plotly
 plotly_express==0.4.1
 locale
+geopandas
+streamlit-folium
