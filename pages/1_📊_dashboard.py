@@ -55,6 +55,8 @@ col_area_sel, col_area = st.columns(
 
 # Financiamento
 cont_fin = st.container()
+cont_fin_sel_range = st.container()
+cont_fin_data = st.container()
 
 # Visão 2023
 def plot_2023():
@@ -213,9 +215,22 @@ fig_fin = px.bar(df_fin, x='tipo', y='value',
              color='variable',barmode='group')
 cont_fin.plotly_chart(fig_fin,use_container_width= True)
 
+# Valor da Transação x Valor Financiado e Valor da Transação x Área Construída
+financed_range = cont_fin_sel_range.slider(
+    'Selecione a faixa de Valores Financiados para 2023',
+    10000.0, 1000000.0, (100000.0, 300000.0),
+    step=10000.0
+)
 
-#if st.session_state['first_display'] == True:
+fin_df = itbi_df.loc[
+    (itbi_df['Ano da Transação'] == 2023) & 
+    ((itbi_df['Valor Financiado'] >= financed_range[0]) & (itbi_df['Valor Financiado'] <= financed_range[1])) & 
+    (itbi_df['Descrição do uso'] == 'APARTAMENTO EM CONDOMÍNIO (EXIGE FRAÇÃO IDEAL)'[0:30])
+][['Valor de Transação','Valor Financiado','Descrição do uso','Área Construída']]
+
+fig_f = px.scatter(fin_df, x="Valor de Transação", y="Valor Financiado", color='Área Construída')
+cont_fin_data.plotly_chart(fig_f,use_container_width= True)
+
 plot_2023()
 adjust_options()
-reorder_cart()
-#    st.session_state['first_display'] = False
+reorder_cart() 
