@@ -27,6 +27,9 @@ def load_itbi_files():
 itbi_df,cart_tab_df = load_itbi_files()
 
 # Divide a tela do Dashboard em Containers
+# Visão 2023
+col_2023_nat_uso = st.container()
+cont_2023 = st.container()
 
 # Transações
 col_txs_sel_ym, col_txs_sel_tv, col_txs_sel_nu= st.columns([3,3,3])
@@ -53,9 +56,58 @@ col_area_sel, col_area = st.columns(
 # Financiamento
 cont_fin = st.container()
 
-# Impostos
-cont_tax = st.container()
+# Visão 2023
+def plot_2023():
+    df_2023 = itbi_df.loc[itbi_df['Ano da Transação'] == 2023]
+    option = st.session_state['option_2023']
+    if st.session_state['option_2023'] == "Natureza de Transação":
+        df_2023_val = df_2023.groupby("Natureza de Transação")['Valor de Transação'].sum().reset_index()
+        df_2023_val = df_2023_val.head(10)
+        df_2023_val['Natureza de Transação'] = df_2023_val['Natureza de Transação'].map(lambda x: x[0:30])
+        df_2023_val = df_2023_val.sort_values("Valor de Transação",ascending=True)
+        df_2023_count = df_2023.groupby("Natureza de Transação")['Valor de Transação'].count().reset_index()
+        df_2023_count = df_2023_count.head(10)
+        df_2023_count['Natureza de Transação'] = df_2023_count['Natureza de Transação'].map(lambda x: x[0:30])
+        df_2023_count.rename({"Valor de Transação":"Número de Transações"},axis=1,inplace=True)
+        df_2023_count = df_2023_count.sort_values("Número de Transações",ascending=True)
+    else:
+        df_2023_val = df_2023.groupby("Descrição do uso")['Valor de Transação'].sum().reset_index()
+        df_2023_val = df_2023_val.head(10)
+        df_2023_val['Descrição do uso'] = df_2023_val['Descrição do uso'].map(lambda x: x[0:30])
+        df_2023_val = df_2023_val.sort_values("Valor de Transação",ascending=True)        
+        df_2023_count = df_2023.groupby("Descrição do uso")['Valor de Transação'].count().reset_index()
+        df_2023_count.head(10)
+        df_2023_count['Descrição do uso'] = df_2023_count['Descrição do uso'].map(lambda x: x[0:30])
+        df_2023_count.rename({"Valor de Transação":"Número de Transações"},axis=1,inplace=True)
+        df_2023_count = df_2023_count.sort_values("Número de Transações",ascending=True)
 
+    fig_2023_val = px.bar(
+        df_2023_val, 
+        x= "Valor de Transação", 
+        y= st.session_state['option_2023'],
+#        color= option,
+        orientation='h',
+        title="Ano 2023"
+    )
+    fig_2023_count = px.bar(
+        df_2023_count, 
+        x= "Número de Transações", 
+        y= st.session_state['option_2023'],
+#        color= option,
+        orientation='h',
+        title="Ano 2023"
+    )
+    cont_2023.plotly_chart(fig_2023_val,use_container_width= True)
+    cont_2023.plotly_chart(fig_2023_count,use_container_width= True)
+    
+option_2023 = col_2023_nat_uso.selectbox(
+    'Natureza ou Uso',
+    ["Natureza de Transação","Descrição do uso"],
+    key="option_2023"
+)
+
+
+# Transações
 def adjust_options():
     used_cols=[]
     
@@ -73,17 +125,13 @@ def adjust_options():
     else:
         used_cols.append("Descrição do uso")
 
-    print ('\n\n\n',used_cols)
-
     if st.session_state['option_t_v'] == "Valor de Transação":
         filtered_df = itbi_df[used_cols + ["Valor de Transação"]].copy()
         filtered_df = filtered_df.groupby(used_cols).sum().reset_index()
-        print(filtered_df,'\n\n\n')
     else:
         filtered_df = itbi_df[used_cols + ["Número do Cadastro"]].copy()
         filtered_df = filtered_df.groupby(used_cols).count().reset_index()
         filtered_df = filtered_df.rename({"Número do Cadastro":"Número de Transações"},axis=1)
-        print(filtered_df,'\n\n\n')
 
     fig_txs = px.bar(
         filtered_df, 
@@ -93,7 +141,6 @@ def adjust_options():
     )
     cont_txs.plotly_chart(fig_txs,use_container_width= True)
 
-# Transações
 option_y_m = col_txs_sel_ym.selectbox(
     'Eixo X',
     ["Ano da Transação","Mes da Transação"],
@@ -130,7 +177,7 @@ def reorder_cart():
         sort_key = "contagem"
     cart_df = cart_df.sort_values(
         sort_key,
-        ascending=False)[['Cartório de Registro','Valor BRL','contagem','rua','abrangência']].head(10)
+        ascending=False)[['Cartório de Registro','Valor BRL','contagem','rua','abrangência']].head(18)
     
     col_cart_display.dataframe(cart_df.set_index(cart_df.columns[0]))
     
@@ -166,7 +213,9 @@ fig_fin = px.bar(df_fin, x='tipo', y='value',
              color='variable',barmode='group')
 cont_fin.plotly_chart(fig_fin,use_container_width= True)
 
+
 #if st.session_state['first_display'] == True:
+plot_2023()
 adjust_options()
 reorder_cart()
 #    st.session_state['first_display'] = False
