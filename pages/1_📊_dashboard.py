@@ -27,6 +27,9 @@ def load_itbi_files():
 itbi_df,cart_tab_df = load_itbi_files()
 
 # Divide a tela do Dashboard em Containers
+# Resumo de Transações e Valor Mês a Mês
+cont_summary = st.container()
+
 # Visão 2023
 col_2023_nat_uso = st.container()
 cont_2023 = st.container()
@@ -54,9 +57,53 @@ col_area_sel, col_area = st.columns(
 )
 
 # Financiamento
+# Distribuição do Tipo de Financiamento
 cont_fin = st.container()
+
+# Visão de Financiamento no tempo para 2023
+cont_fin_time_selector = st.container()
+cont_fin_time_chart = st.container()
+
+# Perfil de Financiamento
 cont_fin_sel_range = st.container()
-cont_fin_data = st.container()
+cont_fin_chart = st.container()
+
+# Execução
+# Summary de Transações e Valores Mês a Mês
+colnames=['Valor de Transação','Data de Transação','Número do Cadastro'] 
+temp_df = itbi_df[colnames]
+temp_df['Data de Transação'] = pd.to_datetime(temp_df['Data de Transação'])
+temp_df = temp_df.set_index('Data de Transação')
+s_df = temp_df.resample('M').agg({'Valor de Transação': 'sum', 'Número do Cadastro': 'count'})
+s_df.rename({'Número do Cadastro':"Transações"},inplace=True,axis=1)
+# Create figure with secondary y-axis
+fig_sum = make_subplots(specs=[[{"secondary_y": True}]])
+
+# Add traces
+fig_sum.add_trace(
+    go.Scatter(x=s_df.index, y=s_df['Transações'], name="Transações"),
+    secondary_y=False,
+)
+
+fig_sum.add_trace(
+    go.Scatter(x=s_df.index, y=s_df['Valor de Transação'], name="Valor"),
+    secondary_y=True,
+)
+
+# Add figure title
+fig_sum.update_layout(
+    title_text="Resumo das Transações"
+)
+
+# Set x-axis title
+fig_sum.update_xaxes(title_text="<b>Data</b>")
+
+# Set y-axes titles
+fig_sum.update_yaxes(title_text="<b>Transações</b>", secondary_y=False)
+fig_sum.update_yaxes(title_text="<b>Valor</b>", secondary_y=True)
+
+cont_summary.plotly_chart(fig_sum,use_container_width= True)
+
 
 # Visão 2023
 def plot_2023():
@@ -89,7 +136,7 @@ def plot_2023():
         y= st.session_state['option_2023'],
 #        color= option,
         orientation='h',
-        title="Ano 2023"
+        title="Distribuição dos Valores de Transação em 2023"
     )
     fig_2023_count = px.bar(
         df_2023_count, 
@@ -97,13 +144,13 @@ def plot_2023():
         y= st.session_state['option_2023'],
 #        color= option,
         orientation='h',
-        title="Ano 2023"
+        title="Distribuição dos Valores de Transação em 2023"
     )
     cont_2023.plotly_chart(fig_2023_val,use_container_width= True)
     cont_2023.plotly_chart(fig_2023_count,use_container_width= True)
     
 option_2023 = col_2023_nat_uso.selectbox(
-    'Natureza ou Uso',
+    'Selecione o tipo de quebra da visão de distribuição',
     ["Natureza de Transação","Descrição do uso"],
     key="option_2023"
 )
@@ -146,20 +193,17 @@ def adjust_options():
 option_y_m = col_txs_sel_ym.selectbox(
     'Eixo X',
     ["Ano da Transação","Mes da Transação"],
-    key="option_y_m",
-    #on_change=adjust_options
+    key="option_y_m"
 )
 option_t_v = col_txs_sel_tv.selectbox(
     'Eixo Y',
     ["Número de Transações","Valor de Transação"],
-    key="option_t_v",
-    #on_change=adjust_options
+    key="option_t_v"
 )
 option_n_u = col_txs_sel_nu.selectbox(
     'Legenda',
     ["Natureza de Transação","Descrição do uso"],
-    key="option_n_u",
-    #on_change=adjust_options
+    key="option_n_u"
 )
 
 def reorder_cart():
@@ -180,7 +224,7 @@ def reorder_cart():
     cart_df = cart_df.sort_values(
         sort_key,
         ascending=False)[['Cartório de Registro','Valor BRL','contagem','rua','abrangência']].head(18)
-    
+    cont_cart.write("Maiores Transações por Cartório de Registro")
     col_cart_display.dataframe(cart_df.set_index(cart_df.columns[0]))
     
     return
@@ -199,7 +243,7 @@ financ_df = itbi_df[["Valor Financiado","Tipo de Financiamento","Valor de Transa
 financ_df['Tipo de Financiamento'] = financ_df['Tipo de Financiamento'].fillna("0.Não declarado")
 # Proporção de Financiados
 prop_financeiados = 100*(1 - (financ_df['Tipo de Financiamento'].value_counts()['0.Não declarado'] / financ_df['Tipo de Financiamento'].value_counts().sum()))
-cont_fin.write (f"Proporção de financiados: {prop_financeiados:.2f}%")
+cont_fin.write (f"Distribuição do Tipo de Financiamento (Proporção de financiados: {prop_financeiados:.2f}%\)")
 financ_df = financ_df.loc[financ_df['Tipo de Financiamento'] != "0.Não declarado"]
 financ_df = financ_df.groupby(["Tipo de Financiamento"]).agg(["sum"]).reset_index()
 df_fin = financ_df[[('Tipo de Financiamento',     ''),
@@ -213,11 +257,35 @@ df_fin = pd.melt(
 df_fin['formatted_value'] = df_fin['value'].map(lambda val: locale.currency(val, grouping=True, symbol='R$'))
 fig_fin = px.bar(df_fin, x='tipo', y='value',
              color='variable',barmode='group')
+
 cont_fin.plotly_chart(fig_fin,use_container_width= True)
+
+# Visão de Financiamento no Tempo
+option_fin_time_sel = cont_fin_time_selector.selectbox(
+    'Selecione a variável a ser exibido no tempo',
+    ["Valor de Transação","Valor Financiado","Proporção","Transações"],
+    key="option_fin_time_sel",
+)
+financ_df = itbi_df[["Número do Cadastro","Data de Transação","Valor Financiado","Tipo de Financiamento","Valor de Transação"]].copy()
+financ_df['Data de Transação'] = pd.to_datetime(financ_df['Data de Transação'])
+financ_df = financ_df[(financ_df['Data de Transação'] >= "2023-01-01")]
+financ_df = financ_df.dropna()
+financ_df = financ_df.groupby(['Data de Transação','Tipo de Financiamento']).agg({'Valor de Transação': 'sum', 'Valor Financiado': 'sum','Número do Cadastro': 'count'}).reset_index()
+financ_df.rename({'Número do Cadastro':"Transações"},inplace=True,axis=1)
+financ_df['Proporção'] = round (financ_df['Valor Financiado'] / financ_df['Valor de Transação'],2)
+
+fig_fin_time = px.line(
+    financ_df, 
+    x='Data de Transação', 
+    y=st.session_state['option_fin_time_sel'],
+    color='Tipo de Financiamento',
+    title="Evolução em 2023 da variável escolhida")
+cont_fin_time_chart.plotly_chart(fig_fin_time,use_container_width= True)
+
 
 # Valor da Transação x Valor Financiado e Valor da Transação x Área Construída
 financed_range = cont_fin_sel_range.slider(
-    'Selecione a faixa de Valores Financiados para 2023',
+    'Selecione a faixa de Valores Financiados para o Perfil de Financiamento',
     10000.0, 1000000.0, (100000.0, 300000.0),
     step=10000.0
 )
@@ -228,8 +296,14 @@ fin_df = itbi_df.loc[
     (itbi_df['Descrição do uso'] == 'APARTAMENTO EM CONDOMÍNIO (EXIGE FRAÇÃO IDEAL)'[0:30])
 ][['Valor de Transação','Valor Financiado','Descrição do uso','Área Construída']]
 
-fig_f = px.scatter(fin_df, x="Valor de Transação", y="Valor Financiado", color='Área Construída')
-cont_fin_data.plotly_chart(fig_f,use_container_width= True)
+fig_f = px.scatter(
+    fin_df, x="Valor de Transação", 
+    y="Valor Financiado", 
+    color = 'Área Construída',
+    title = "Perfil de Financiamento em 2023" 
+)
+
+cont_fin_chart.plotly_chart(fig_f,use_container_width= True)
 
 plot_2023()
 adjust_options()
