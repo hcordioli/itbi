@@ -1,0 +1,1 @@
+Streamlit Dashboard para dados sobre Imposto sobre Transação de Bens Imóveis (ITBI) bem como previsão de preços de apartamentos em São Paulo, usando modelo criado através de técnicas de Árvore de Decisão XGBoost.
